@@ -5,7 +5,7 @@ import uuid
 from datetime import datetime
 from typing import List, Optional
 from langchain_core.tools import tool
-from app.core.graph import execute_cypher
+from app.core.graph import execute_cypher, get_schema
 
 @tool
 def save_note(content: str, entities: List[str] = [], tags: List[str] = []) -> str:
@@ -191,3 +191,38 @@ def get_entity_info(name: str) -> str:
             info.append(f"- {r['rel']} {r['other_name']}")
             
     return "\n".join(info)
+
+@tool
+def execute_raw_cypher(query: str, params: Optional[dict] = None) -> str:
+    """
+    直接执行原生的 Cypher 语句。这提供了最大的灵活性，可以执行任何查询或更改。
+    
+    Args:
+        query: 原生 Cypher 查询字符串
+        params: 查询参数字典 (可选)
+        
+    Returns:
+        查询结果的字符串表示
+    """
+    try:
+        results = execute_cypher(query, params)
+        if not results:
+            return "查询执行成功，无结果返回。"
+        return str(results)
+    except Exception as e:
+        return f"❌ 执行失败: {str(e)}"
+
+@tool
+def get_graph_schema() -> str:
+    """
+    获取图数据库的 Schema 信息（节点标签、关系类型等）。
+    在编写复杂的 Cypher 语句前，应该先调用此工具了解数据库结构。
+    
+    Returns:
+        数据库 Schema 描述
+    """
+    try:
+        schema = get_schema()
+        return f"📊 当前数据库 Schema:\n{schema}"
+    except Exception as e:
+        return f"❌ 获取 Schema 失败: {str(e)}"
