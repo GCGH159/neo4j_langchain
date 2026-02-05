@@ -8,7 +8,7 @@ from config import config
 def print_banner():
     """打印欢迎信息"""
     print("=" * 60)
-    print("🦜️🔗 Neo4j + LangChain 自然语言查询系统")
+    print("🦜️🔗 Neo4j + LangChain 自然语言查询系统 v2.0")
     print("=" * 60)
     print()
 
@@ -21,8 +21,10 @@ def print_menu():
     print("  3. 📈 查看数据库统计")
     print("  4. 📥 加载示例数据")
     print("  5. 💬 示例查询")
-    print("  6. 🤖 笔记智能体 (Agent) [NEW]")
-    print("  7. 🚪 退出")
+    print("  6. 🤖 笔记智能体 (Agent)")
+    print("  7. 🧠 笔记智能体 + 记忆 (持续性对话) [NEW]")
+    print("  8. 🔧 记忆优化工具 (裁剪与整理) [NEW]")
+    print("  9. 🚪 退出")
     print()
 
 
@@ -168,7 +170,7 @@ def show_example_queries():
 
 
 def run_note_agent_mode():
-    """笔记 Agent 模式"""
+    """笔记 Agent 模式（原版，无持久化记忆）"""
     from app.agent.note_agent import note_agent
     
     print("\n🤖 笔记智能体 (Agent) 已启动")
@@ -198,6 +200,85 @@ def run_note_agent_mode():
             break
 
 
+def run_note_agent_with_memory_mode():
+    """带记忆的笔记 Agent 模式（支持持续性对话）"""
+    from app.agent.note_agent_with_memory import create_session
+    import uuid
+    
+    session_id = str(uuid.uuid4())[:8]
+    agent = create_session(session_id)
+    
+    print("\n🧠 笔记智能体 + 记忆 (持续性对话) 已启动")
+    print(f"  会话ID: {session_id}")
+    print("  特性：")
+    print("  - ✅ 记住之前的对话内容")
+    print("  - ✅ 对话历史存储在 Neo4j")
+    print("  - ✅ 支持上下文理解（\"刚才说的\"、\"之前的\"）")
+    print("\n  你可以说：")
+    print("  - \"记录：今天学习了 LangChain\"")
+    print("  - \"刚才说的是什么？\"（测试记忆功能）")
+    print("  - \"查询关于学习的笔记\"")
+    print("  输入 'q' 返回主菜单 | 输入 'clear' 清空对话历史")
+    print("-" * 40)
+    
+    while True:
+        try:
+            user_input = input("\n👤 你: ").strip()
+            
+            if not user_input:
+                continue
+            if user_input.lower() == 'q':
+                break
+            if user_input.lower() == 'clear':
+                agent.clear_history()
+                print("✅ 对话历史已清空")
+                continue
+                
+            print("🧠 Agent 思考中...")
+            response = agent.chat(user_input)
+            print(f"\n🧠 Agent: {response}")
+            
+        except KeyboardInterrupt:
+            print("\n")
+            break
+    
+    # 显示统计
+    count = agent.get_message_count()
+    print(f"\n📊 本次会话统计: 共 {count} 条消息")
+
+
+def run_memory_optimization_mode():
+    """记忆优化模式"""
+    from app.agent.memory_pruning_agent import memory_pruning_agent
+    
+    print("\n🔧 记忆优化工具 已启动")
+    print("  功能：分析和优化 Neo4j 图谱中的记忆结构")
+    print("\n  你可以说：")
+    print("  - \"分析当前图谱状态\"")
+    print("  - \"查找冗余的实体\"")
+    print("  - \"删除孤立节点\"")
+    print("  - \"裁剪旧的对话记录\"")
+    print("  输入 'q' 返回主菜单")
+    print("-" * 40)
+    
+    while True:
+        try:
+            user_input = input("\n👤 你的指令: ").strip()
+            
+            if not user_input:
+                continue
+            if user_input.lower() == 'q':
+                break
+                
+            print("🔧 Agent 分析中...")
+            response = memory_pruning_agent.optimize(user_input)
+            print(f"\n🔧 优化结果:\n{response}")
+            
+        except KeyboardInterrupt:
+            print("\n")
+            break
+
+
 def main():
     """主函数"""
     print_banner()
@@ -216,7 +297,7 @@ def main():
     
     while True:
         print_menu()
-        choice = input("请输入选项 (1-7): ").strip()  # Update range
+        choice = input("请输入选项 (1-9): ").strip()
         
         try:
             if choice == '1':
@@ -232,15 +313,22 @@ def main():
             elif choice == '6':
                 run_note_agent_mode()
             elif choice == '7':
+                run_note_agent_with_memory_mode()
+            elif choice == '8':
+                run_memory_optimization_mode()
+            elif choice == '9':
                 print("\n👋 再见！")
                 break
             else:
-                print("无效选项，请重新选择")
+                print("❌ 无效选项，请重新选择")
+                
         except KeyboardInterrupt:
             print("\n\n👋 再见！")
             break
         except Exception as e:
-            print(f"\n❌ 发生错误: {e}")
+            print(f"\n❌ 出错: {e}")
+            import traceback
+            traceback.print_exc()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
 # Neo4j + LangChain Integration
+# 使用最新的稳定版本，确保兼容性
 langchain>=0.3.0
 langchain-core>=0.3.0
-langchain-neo4j>=0.2.0
+langchain-neo4j>=0.3.0
 langchain-openai>=0.3.0
 python-dotenv>=1.0.0
 neo4j>=5.0.0
