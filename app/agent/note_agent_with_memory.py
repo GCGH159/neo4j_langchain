@@ -105,7 +105,7 @@ class NoteAgentWithMemory:
         """
         try:
             # 获取历史消息
-            history_messages = self.history.get_recent_messages(limit=10)
+            history_messages = self.history.get_recent_messages(limit=50)
             
             # 构建包含历史的输入
             all_messages = history_messages + [{"role": "user", "content": user_input}]
