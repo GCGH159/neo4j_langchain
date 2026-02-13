@@ -1,0 +1,125 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: neo4j_langchain_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: neo4j_langchain
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/migrations/init_mysql.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Neo4j图数据库
+  neo4j:
+    image: neo4j:5.14.0
+    container_name: neo4j_langchain_neo4j
+    environment:
+      NEO4J_AUTH: neo4j/password123
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - ./database/migrations/init_neo4j.cypher:/scripts/init.cypher
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: neo4j_langchain_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI应用
+  app:
+    build: .
+    container_name: neo4j_langchain_app
+    ports:
+      - "8000:8000"
+    environment:
+      # MySQL配置
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: appuser
+      MYSQL_PASSWORD: apppassword
+      MYSQL_DATABASE: neo4j_langchain
+      
+      # Neo4j配置
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password123
+      
+      # Redis配置
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      
+      # OpenAI配置
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: gpt-4
+      OPENAI_EMBEDDING_MODEL: text-embedding-ada-002
+      
+      # OSS配置
+      OSS_ACCESS_KEY_ID: ${OSS_ACCESS_KEY_ID}
+      OSS_ACCESS_KEY_SECRET: ${OSS_ACCESS_KEY_SECRET}
+      OSS_BUCKET_NAME: ${OSS_BUCKET_NAME}
+      OSS_ENDPOINT: ${OSS_ENDPOINT}
+      
+      # Celery配置
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      
+      # 应用配置
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-here}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app_network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  neo4j_data:
+  neo4j_logs:
+  redis_data:
+
+networks:
+  app_network:
+    driver: bridge
